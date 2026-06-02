@@ -1,0 +1,753 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: TEB - The Empowerment Bridge API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: users
+    description: User profile operations
+  - name: jobs
+    description: Job postings
+  - name: applications
+    description: Job applications
+  - name: donations
+    description: Donations and funding
+  - name: captains
+    description: Community captains and mentors
+  - name: stats
+    description: Platform statistics
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /users/me:
+    get:
+      operationId: getMyProfile
+      tags: [users]
+      summary: Get current user's profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "404":
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: upsertMyProfile
+      tags: [users]
+      summary: Create or update current user's profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertProfileBody"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List PWD users (talent directory)
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [pwd, corporate, donor, captain]
+        - name: verified
+          in: query
+          schema:
+            type: boolean
+        - name: skill
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of user profiles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+
+  /users/{userId}:
+    get:
+      operationId: getUserProfile
+      tags: [users]
+      summary: Get a user profile by ID
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: List job postings
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [full_time, part_time, freelance, internship]
+        - name: remote
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobListResponse"
+    post:
+      operationId: createJob
+      tags: [jobs]
+      summary: Create a job posting (corporate users only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJobBody"
+      responses:
+        "201":
+          description: Created job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+
+  /jobs/{jobId}:
+    get:
+      operationId: getJob
+      tags: [jobs]
+      summary: Get a job posting
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /jobs/{jobId}/apply:
+    post:
+      operationId: applyToJob
+      tags: [applications]
+      summary: Apply to a job
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyJobBody"
+      responses:
+        "201":
+          description: Application submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobApplication"
+
+  /applications/mine:
+    get:
+      operationId: getMyApplications
+      tags: [applications]
+      summary: Get current user's job applications
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of applications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationListResponse"
+
+  /donations:
+    get:
+      operationId: listDonations
+      tags: [donations]
+      summary: List donations (public transparency feed)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of donations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DonationListResponse"
+    post:
+      operationId: makeDonation
+      tags: [donations]
+      summary: Make a donation to a PWD profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MakeDonationBody"
+      responses:
+        "201":
+          description: Donation recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Donation"
+
+  /donations/general:
+    post:
+      operationId: makeGeneralDonation
+      tags: [donations]
+      summary: Make a general donation (no auth required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amountPkr]
+              properties:
+                amountPkr:
+                  type: integer
+                  description: Donation amount in Pakistani Rupees
+                donorName:
+                  type: string
+                  description: Optional name of the donor
+                message:
+                  type: string
+                  description: Optional message from the donor
+      responses:
+        "201":
+          description: General donation recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Donation"
+
+  /donations/mine:
+    get:
+      operationId: getMyDonations
+      tags: [donations]
+      summary: Get current user's donation history
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of donations made by current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DonationListResponse"
+
+  /captains:
+    get:
+      operationId: listCaptains
+      tags: [captains]
+      summary: List active community captains
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of captains
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptainListResponse"
+
+  /stats:
+    get:
+      operationId: getPlatformStats
+      tags: [stats]
+      summary: Get platform-wide impact statistics
+      responses:
+        "200":
+          description: Platform statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformStats"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        clerkUserId:
+          type: string
+        role:
+          type: string
+          enum: [pwd, corporate, donor, captain]
+        displayName:
+          type: string
+        bio:
+          type: string
+        location:
+          type: string
+        skills:
+          type: array
+          items:
+            type: string
+        disability:
+          type: string
+        companyName:
+          type: string
+        website:
+          type: string
+        kycVerified:
+          type: boolean
+        incomeGoal:
+          type: integer
+        currentIncome:
+          type: integer
+        payItForwardActive:
+          type: boolean
+        avatarInitials:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - clerkUserId
+        - role
+        - displayName
+        - kycVerified
+        - createdAt
+
+    UpsertProfileBody:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [pwd, corporate, donor, captain]
+        displayName:
+          type: string
+        bio:
+          type: string
+        location:
+          type: string
+        skills:
+          type: array
+          items:
+            type: string
+        disability:
+          type: string
+        companyName:
+          type: string
+        website:
+          type: string
+        incomeGoal:
+          type: integer
+        currentIncome:
+          type: integer
+      required:
+        - role
+        - displayName
+
+    UserListResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserProfile"
+        total:
+          type: integer
+      required:
+        - users
+        - total
+
+    Job:
+      type: object
+      properties:
+        id:
+          type: integer
+        postedByUserId:
+          type: integer
+        companyName:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [full_time, part_time, freelance, internship]
+        location:
+          type: string
+        remote:
+          type: boolean
+        salaryMin:
+          type: integer
+        salaryMax:
+          type: integer
+        skills:
+          type: array
+          items:
+            type: string
+        accommodations:
+          type: string
+        applicationCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - companyName
+        - title
+        - description
+        - type
+        - remote
+        - createdAt
+
+    CreateJobBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [full_time, part_time, freelance, internship]
+        location:
+          type: string
+        remote:
+          type: boolean
+        salaryMin:
+          type: integer
+        salaryMax:
+          type: integer
+        skills:
+          type: array
+          items:
+            type: string
+        accommodations:
+          type: string
+      required:
+        - title
+        - description
+        - type
+        - remote
+
+    JobListResponse:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Job"
+        total:
+          type: integer
+      required:
+        - jobs
+        - total
+
+    JobApplication:
+      type: object
+      properties:
+        id:
+          type: integer
+        jobId:
+          type: integer
+        applicantUserId:
+          type: integer
+        coverLetter:
+          type: string
+        status:
+          type: string
+          enum: [applied, viewed, shortlisted, rejected, interview, hired]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - jobId
+        - applicantUserId
+        - status
+        - createdAt
+
+    ApplyJobBody:
+      type: object
+      properties:
+        coverLetter:
+          type: string
+
+    ApplicationListResponse:
+      type: object
+      properties:
+        applications:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobApplication"
+        total:
+          type: integer
+      required:
+        - applications
+        - total
+
+    Donation:
+      type: object
+      properties:
+        id:
+          type: integer
+        donorUserId:
+          type: integer
+        recipientUserId:
+          type: integer
+        amountPkr:
+          type: integer
+        message:
+          type: string
+        anonymous:
+          type: boolean
+        donorName:
+          type: string
+        recipientName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - recipientUserId
+        - amountPkr
+        - anonymous
+        - createdAt
+
+    MakeDonationBody:
+      type: object
+      properties:
+        recipientUserId:
+          type: integer
+        amountPkr:
+          type: integer
+        message:
+          type: string
+        anonymous:
+          type: boolean
+      required:
+        - recipientUserId
+        - amountPkr
+
+    DonationListResponse:
+      type: object
+      properties:
+        donations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Donation"
+        total:
+          type: integer
+        totalAmountPkr:
+          type: integer
+      required:
+        - donations
+        - total
+        - totalAmountPkr
+
+    Captain:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        displayName:
+          type: string
+        location:
+          type: string
+        bio:
+          type: string
+        assignedCount:
+          type: integer
+        successCount:
+          type: integer
+        avatarInitials:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - displayName
+        - assignedCount
+        - successCount
+        - createdAt
+
+    CaptainListResponse:
+      type: object
+      properties:
+        captains:
+          type: array
+          items:
+            $ref: "#/components/schemas/Captain"
+        total:
+          type: integer
+      required:
+        - captains
+        - total
+
+    PlatformStats:
+      type: object
+      properties:
+        totalPwdMembers:
+          type: integer
+        totalJobPlacements:
+          type: integer
+        totalFundsDistributedPkr:
+          type: integer
+        totalCorporatePartners:
+          type: integer
+        totalActiveCaptains:
+          type: integer
+        totalDonations:
+          type: integer
+      required:
+        - totalPwdMembers
+        - totalJobPlacements
+        - totalFundsDistributedPkr
+        - totalCorporatePartners
+        - totalActiveCaptains
+        - totalDonations
